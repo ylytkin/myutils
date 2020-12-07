@@ -1,0 +1,11 @@
+nltk
+pymystem3
+matplotlib
+numpy
+pyvis
+scipy
+networkx
+setuptools
+joblib
+pandas
+scikit-learn

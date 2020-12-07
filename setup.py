@@ -1,16 +1,11 @@
 from setuptools import setup
 
-requirements = [
-    "networkx~=2.4",
-    "nltk~=3.5",
-    "numpy~=1.19.1",
-    "pymystem3~=0.2.0",
-    "scipy~=1.5.2",
-]
+with open('requirements.txt') as file:
+    requirements = [line.strip() for line in file.readlines()]
 
 setup(
     name='myutils',
-    version='0.2',
+    version='0.3',
     description='Some small Python utility functions I frequently use.',
     url='https://github.com/ylytkin/myutils',
     author='Yura Lytkin',
