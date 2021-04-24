@@ -4,6 +4,7 @@ matplotlib
 numpy
 pyvis
 scipy
+seaborn
 networkx
 setuptools
 joblib

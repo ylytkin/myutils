@@ -4,7 +4,7 @@ import numpy as np
 import networkx as nx
 from scipy import sparse
 
-from myutils import log
+from myutils import log, run_command
 from myutils.json import save_json, load_json, load_json_or_create
 from myutils.pickle import save_pickle, load_pickle
 from myutils.networkx import graph_info, calculate_distances
@@ -14,6 +14,7 @@ from myutils.text import tokenize_documents
 
 __all__ = [
     'test_log',
+    'test_run_command',
     'test_json',
     'test_pickle',
     'test_networkx',
@@ -38,22 +39,20 @@ def test_log(verbose: bool = True):
     log('Testing', 'log', 1, '...')
 
     if verbose:
-        log('Testing logging to file.')
+        log('Done.')
 
-    log_fpath = _get_temp_fpath('log')
 
-    log_message = 'Test message'
+def test_run_command(verbose: bool = True):
+    if verbose is True:
+        log('Testing run_command.')
 
-    log(log_message, to_file=log_fpath)
+    cmd = 'echo "Hello world!"'
+    out, err = run_command(cmd)
 
-    with log_fpath.open() as file:
-        contents = file.readlines()
+    assert out == 'Hello world!'
+    assert err == ''
 
-    assert (len(contents) == 1) and (contents[0].strip().endswith(log_message))
-
-    log_fpath.unlink()
-
-    if verbose:
+    if verbose is True:
         log('Done.')
 
 
@@ -189,6 +188,7 @@ def test_text(verbose: bool = True):
 
 if __name__ == '__main__':
     test_log()
+    test_run_command()
     test_json()
     test_pickle()
     test_networkx()
