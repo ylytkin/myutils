@@ -51,7 +51,7 @@ def matplotlib_seaborn_style(palette: str = 'deep'):
     
     
 class matplotlib_dark_theme():
-    def __init__(self, facecolor: str = 'None'):
+    def __init__(self, facecolor: str = '#111111'):
         self.dark_theme_rcparams = self._get_dark_theme_rcparams(black=facecolor)
         self.prev_theme_rcparams = {key: plt.rcParams[key] for key in self.dark_theme_rcparams}
         
