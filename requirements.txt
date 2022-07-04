@@ -1,12 +1,15 @@
 nltk
 pymystem3
 matplotlib
+matplotlib-inline
 numpy
 pyvis
 scipy
 seaborn
 networkx
 setuptools
+ipython
 joblib
 pandas
 scikit-learn
+python-telegram-handler @ git+https://github.com/ylytkin/python-telegram-handler.git
