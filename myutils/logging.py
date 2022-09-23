@@ -3,6 +3,7 @@ from pathlib import Path
 from typing import Union, Optional
 
 from telegram_handler import TelegramHandler, HtmlFormatter
+from slack_log_handler import SlackLogHandler
 
 __all__ = [
     'get_logger',
@@ -16,10 +17,13 @@ def get_logger(
     stdout_level: int = logging.INFO,
     file_name: Union[None, str, Path] = None,
     file_level: int = logging.INFO,
+    slack_webhook_url: Optional[str] = None,
+    slack_level: int = logging.INFO,
     tgbot_token: Optional[str] = None,
-    chat_id: Optional[int] = None,
+    tgbot_chat_id: Optional[int] = None,
     tgbot_level: int = logging.INFO,
     str_format: str = '%(asctime)s %(name)-12s %(levelname)-8s %(message)s',
+    msg_format: str = '%(asctime)s\n%(name)s\n%(levelname)s\n\n%(message)s',
     date_format: str = '%Y-%m-%d %H:%M:%S',
 ):
     str_formatter = logging.Formatter(fmt=str_format, datefmt=date_format)
@@ -51,15 +55,29 @@ def get_logger(
             
             logger.addHandler(file_handler)
         
-    if tgbot_token is not None and chat_id is not None:
+    if slack_webhook_url is not None:
+        slack_handler_name = '_slack'
+
+        if slack_handler_name not in current_handlers:
+            slack_handler = SlackLogHandler(
+                slack_webhook_url,
+                format=f"```{msg_format}```",
+                date_format=date_format,
+            )
+            slack_handler.name = slack_handler_name
+            slack_handler.setLevel(slack_level)
+
+            logger.addHandler(slack_handler)
+
+    if tgbot_token is not None and tgbot_chat_id is not None:
         telegram_handler_name = '_tgbot'
 
         if telegram_handler_name not in current_handlers:
-            telegram_handler = TelegramHandler(tgbot_token, chat_id)
+            telegram_handler = TelegramHandler(tgbot_token, tgbot_chat_id)
             telegram_handler.set_name(telegram_handler_name)
             telegram_handler.setLevel(tgbot_level)
             
-            html_formatter = HtmlFormatter(datefmt=date_format)
+            html_formatter = HtmlFormatter(fmt=f"<pre>{msg_format}</pre>", datefmt=date_format)
             telegram_handler.setFormatter(html_formatter)
             
             logger.addHandler(telegram_handler)

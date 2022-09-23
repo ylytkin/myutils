@@ -5,7 +5,7 @@ with open('requirements.txt') as file:
 
 setup(
     name='myutils',
-    version='0.0.1',
+    version='0.0.2',
     description='Some small Python utility functions I frequently use.',
     url='https://github.com/ylytkin/myutils',
     author='Yura Lytkin',

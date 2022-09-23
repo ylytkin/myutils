@@ -13,3 +13,4 @@ joblib
 pandas
 scikit-learn
 python-telegram-handler @ git+https://github.com/ylytkin/python-telegram-handler.git
+slack_log_handler @ git+https://github.com/ylytkin/python-slack-logger.git
