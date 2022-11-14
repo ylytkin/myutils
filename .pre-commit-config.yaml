@@ -1,0 +1,48 @@
+repos:
+  -
+    repo: local
+    hooks:
+      -
+        id: isort
+        name: isort
+        entry: isort
+        language: system
+        files: ^(myutils|tests)/.+\.py$
+      -
+        id: black
+        name: black
+        entry: black
+        language: system
+        files: ^(myutils|tests)/.+\.py$
+      -
+        id: pylint
+        name: pylint
+        entry: pylint
+        language: system
+        files: ^(myutils)/.+\.py$
+      -
+        id: mypy
+        name: mypy
+        entry: mypy
+        language: system
+        files: ^(myutils)/.+\.py$
+      -
+        id: pytest
+        name: pytest
+        entry: pytest
+        language: system
+        files: ^(tests)/.+\.py$
+        always_run: true
+  -
+    repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: "v4.1.0"
+    hooks:
+      - id: check-added-large-files
+      - id: check-json
+      - id: check-merge-conflict
+      - id: check-yaml
+      - id: detect-private-key
+      - id: end-of-file-fixer
+      - id: requirements-txt-fixer
+      - id: forbid-new-submodules
+      - id: trailing-whitespace

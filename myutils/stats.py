@@ -1,23 +1,32 @@
-from typing import Optional
+from typing import Any, Optional
 
-import pandas as pd
 import numpy as np
+import pandas as pd
+from numpy.typing import NDArray
 from scipy import stats
+from scipy.cluster.hierarchy import fcluster, linkage
 from scipy.spatial.distance import pdist
-from scipy.cluster.hierarchy import linkage, fcluster
 
 __all__ = [
-    'corrcoef',
-    'acfunc',
+    "corrcoef",
+    "acfunc",
 ]
 
 
-def cluster_features(corr: np.ndarray) -> np.ndarray:
+def cluster_features(corr: NDArray[Any]) -> NDArray[Any]:
     if corr.shape == (1, 1):
         return np.array([1])
 
     dist = pdist(corr)
-    clusters = fcluster(linkage(dist, method='complete'), 0.5 * np.max(dist), 'distance')
+
+    clusters: NDArray[Any] = fcluster(
+        linkage(
+            dist,
+            method="complete",
+        ),
+        t=0.5 * np.max(dist),
+        criterion="distance",
+    )
 
     return clusters
 
@@ -40,8 +49,7 @@ def reorder_corr(corr: pd.DataFrame) -> pd.DataFrame:
 
     inner_clusters = np.concatenate(inner_clusters)
 
-    clusters = pd.DataFrame(list(zip(outer_clusters, inner_clusters)))\
-        .sort_values(by=[0, 1])
+    clusters = pd.DataFrame(list(zip(outer_clusters, inner_clusters))).sort_values(by=[0, 1])
 
     reordering = clusters.index.values
 
@@ -55,11 +63,11 @@ def reorder_corr(corr: pd.DataFrame) -> pd.DataFrame:
 
 
 def corrcoef(
-        data: pd.DataFrame,
-        method: str = 'pearson',
-        reorder: bool = True,
-        alpha: Optional[float] = 0.05,
-        min_periods: int = 5,
+    data: pd.DataFrame,
+    method: str = "pearson",
+    reorder: bool = True,
+    alpha: Optional[float] = 0.05,
+    min_periods: int = 5,
 ) -> pd.DataFrame:
     data = data.copy()
 
@@ -74,7 +82,7 @@ def corrcoef(
         nval = nval.T.dot(nval)
 
         quantile = stats.t.ppf(1 - alpha / 2, df=nval - 2)
-        critical = quantile / np.sqrt(nval - 2 + quantile ** 2)
+        critical = quantile / np.sqrt(nval - 2 + quantile**2)
 
         corr.values[np.abs(corr.values) < critical] = np.nan
         corr.values[nval < min_periods] = np.nan
@@ -83,20 +91,20 @@ def corrcoef(
 
 
 def acfunc(
-        ts: pd.Series,
-        minlag: int = 2,
-        maxlag: int = 14,
-        method: str = 'pearson',
-        min_periods: int = 5,
+    time_series: pd.Series,
+    minlag: int = 2,
+    maxlag: int = 14,
+    method: str = "pearson",
+    min_periods: int = 5,
 ) -> pd.Series:
-    ts_lags = pd.DataFrame({i: ts.shift(-i) for i in range(minlag, maxlag + 1)})
+    time_series_lags = pd.DataFrame({i: time_series.shift(-i) for i in range(minlag, maxlag + 1)})
 
-    acf = ts_lags.corrwith(ts, method=method)
-    acf.index.name = 'lag'
+    acf = time_series_lags.corrwith(time_series, method=method)
+    acf.index.name = "lag"
 
-    nval_ts = 1 - np.isnan(ts.values).astype(int)
-    nval_lags = 1 - np.isnan(ts_lags.values).astype(int)
-    nval = nval_lags.T.dot(nval_ts)
+    nval_time_series = 1 - np.isnan(time_series.values).astype(int)
+    nval_lags = 1 - np.isnan(time_series_lags.values).astype(int)
+    nval = nval_lags.T.dot(nval_time_series)
 
     acf.values[nval < min_periods] = np.nan
 

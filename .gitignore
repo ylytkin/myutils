@@ -1,6 +1,10 @@
-**/.DS_Store
-**/__pycache__
-**/.idea
-**/.ipynb_checkpoints
+.DS_Store
+__pycache__
+.idea
+.vscode
+.ipynb_checkpoints
+.mypy_cache
+.pytest_cache
 
-**/.venv
+.venv
+notebooks

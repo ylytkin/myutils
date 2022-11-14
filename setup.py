@@ -5,7 +5,7 @@ with open('requirements.txt') as file:
 
 setup(
     name='myutils',
-    version='0.0.2',
+    version='1.0.0',
     description='Some small Python utility functions I frequently use.',
     url='https://github.com/ylytkin/myutils',
     author='Yura Lytkin',
@@ -13,5 +13,9 @@ setup(
     license='MIT',
     packages=['myutils'],
     install_requires=requirements,
+    classifiers=[
+        "Programming Language :: Python :: 3.8",
+    ],
+    python_requires=">=3.8",
     zip_safe=False,
 )

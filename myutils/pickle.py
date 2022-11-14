@@ -1,37 +1,34 @@
 import pickle as pkl
 from pathlib import Path
-from typing import Union
-from typing import Any
-
-from myutils import get_path
+from typing import Any, Union
 
 __all__ = [
-    'load_pickle',
-    'save_pickle',
+    "load_pickle",
+    "save_pickle",
 ]
 
 
-def load_pickle(fpath: Union[Path, str]) -> Any:
+def load_pickle(file_path: Union[Path, str]) -> Any:
     """Load a pickle file.
 
-    :param fpath: str or Path
+    :param file_path: str or Path
     :return: any
     """
 
-    fpath = get_path(fpath)
+    file_path = Path(file_path)
 
-    with fpath.open('rb') as file:
+    with file_path.open("rb") as file:
         return pkl.load(file)
 
 
-def save_pickle(obj: Any, fpath: Union[Path, str]) -> None:
+def save_pickle(obj: Any, file_path: Union[Path, str]) -> None:
     """Save an object to a pickle file.
 
     :param obj: object to pickle (any)
-    :param fpath: str or Path
+    :param file_path: str or Path
     """
 
-    fpath = get_path(fpath)
+    file_path = Path(file_path)
 
-    with fpath.open('wb') as file:
+    with file_path.open("wb") as file:
         pkl.dump(obj, file, protocol=pkl.HIGHEST_PROTOCOL)

@@ -1,85 +1,107 @@
 import logging
+import logging.config
 from pathlib import Path
-from typing import Union, Optional
-
-from telegram_handler import TelegramHandler, HtmlFormatter
-from slack_log_handler import SlackLogHandler
+from typing import Any, Optional, Union
 
 __all__ = [
-    'get_logger',
+    "configure_logging",
 ]
 
+logger = logging.getLogger(__name__)
 
-def get_logger(
-    name: Optional[str] = None,
+
+def _check_file_writeable(file_path: Union[None, str, Path], encoding: str) -> bool:
+    if file_path is None:
+        return False
+
+    try:
+        with open(file_path, "a", encoding=encoding):
+            pass
+    except FileNotFoundError:
+        return False
+
+    return True
+
+
+# pylint: disable=too-many-locals
+def configure_logging(
+    *names: Any,
     level: int = logging.DEBUG,
     stdout: bool = False,
     stdout_level: int = logging.INFO,
-    file_name: Union[None, str, Path] = None,
-    file_level: int = logging.INFO,
-    slack_webhook_url: Optional[str] = None,
-    slack_level: int = logging.INFO,
-    tgbot_token: Optional[str] = None,
-    tgbot_chat_id: Optional[int] = None,
-    tgbot_level: int = logging.INFO,
-    str_format: str = '%(asctime)s %(name)-12s %(levelname)-8s %(message)s',
-    msg_format: str = '%(asctime)s\n%(name)s\n%(levelname)s\n\n%(message)s',
-    date_format: str = '%Y-%m-%d %H:%M:%S',
-):
-    str_formatter = logging.Formatter(fmt=str_format, datefmt=date_format)
-    
-    logger = logging.getLogger(name)
-    logger.setLevel(level)
+    file_path: Union[None, str, Path] = None,
+    file_level: int = logging.DEBUG,
+    file_encoding: str = "utf-8",
+    telegram_token: Optional[str] = None,
+    telegram_chat_id: Optional[int] = None,
+    telegram_level: int = logging.INFO,
+    str_format: str = "%(asctime)s %(name)-35s %(levelname)-8s %(message)s",
+    msg_format: str = "```\n%(asctime)s\n%(name)s\n%(levelname)s\n\n%(message)s\n```",
+    date_format: str = "%Y-%m-%d %H:%M:%S",
+    propagate: bool = True,
+) -> None:
+    formatters = {
+        "standard": {
+            "class": "logging.Formatter",
+            "format": str_format,
+            "datefmt": date_format,
+        },
+        "telegram": {
+            "class": "myutils.telegram_logger.TelegramLogFormatter",
+            "format": msg_format,
+            "datefmt": date_format,
+        },
+    }
 
-    current_handlers = [handler.name for handler in logger.handlers]
+    handlers = {}
 
     if stdout is True:
-        stream_handler_name = '_stream'
+        handlers["stdout"] = {
+            "class": "logging.StreamHandler",
+            "formatter": "standard",
+            "level": stdout_level,
+        }
 
-        if stream_handler_name not in current_handlers:
-            stream_handler = logging.StreamHandler()
-            stream_handler.set_name(stream_handler_name)
-            stream_handler.setLevel(stdout_level)
-            stream_handler.setFormatter(str_formatter)
-            
-            logger.addHandler(stream_handler)
-        
-    if file_name is not None:
-        file_handler_name = '_file'
+    is_file_writeable = _check_file_writeable(file_path, encoding=file_encoding)
 
-        if file_handler_name not in current_handlers:
-            file_handler = logging.FileHandler(file_name, encoding='utf-8')
-            file_handler.set_name(file_handler_name)
-            file_handler.setLevel(file_level)
-            file_handler.setFormatter(str_formatter)
-            
-            logger.addHandler(file_handler)
-        
-    if slack_webhook_url is not None:
-        slack_handler_name = '_slack'
+    if file_path is not None and is_file_writeable:
+        handlers["file"] = {
+            "class": "logging.FileHandler",
+            "formatter": "standard",
+            "filename": file_path,
+            "mode": "a",
+            "encoding": file_encoding,
+            "level": file_level,
+        }
 
-        if slack_handler_name not in current_handlers:
-            slack_handler = SlackLogHandler(
-                slack_webhook_url,
-                format=f"```{msg_format}```",
-                date_format=date_format,
-            )
-            slack_handler.name = slack_handler_name
-            slack_handler.setLevel(slack_level)
+    if telegram_token is not None and telegram_chat_id is not None:
+        handlers["telegram"] = {
+            "class": "myutils.telegram_logger.TelegramLogHandler",
+            "formatter": "telegram",
+            "token": telegram_token,
+            "chat_id": telegram_chat_id,
+            "level": telegram_level,
+        }
 
-            logger.addHandler(slack_handler)
+    logger_config_ = {
+        "handlers": list(handlers),
+        "level": level,
+        "propagate": propagate,
+    }
 
-    if tgbot_token is not None and tgbot_chat_id is not None:
-        telegram_handler_name = '_tgbot'
+    loggers = {}
 
-        if telegram_handler_name not in current_handlers:
-            telegram_handler = TelegramHandler(tgbot_token, tgbot_chat_id)
-            telegram_handler.set_name(telegram_handler_name)
-            telegram_handler.setLevel(tgbot_level)
-            
-            html_formatter = HtmlFormatter(fmt=f"<pre>{msg_format}</pre>", datefmt=date_format)
-            telegram_handler.setFormatter(html_formatter)
-            
-            logger.addHandler(telegram_handler)
-        
-    return logger
+    for name in names:
+        loggers[name] = logger_config_.copy()
+
+    logging_config = {
+        "version": 1,
+        "formatters": formatters,
+        "handlers": handlers,
+        "loggers": loggers,
+    }
+
+    logging.config.dictConfig(logging_config)
+
+    if file_path is not None and not is_file_writeable:
+        logger.warning(f"could not configure file handler for path {file_path}")
