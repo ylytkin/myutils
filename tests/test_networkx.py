@@ -4,7 +4,7 @@ import networkx as nx
 from myutils.networkx import calculate_distances, graph_info
 
 N_NODES = 2000
-N_TESTING_NODE_PAIRS = 10**5
+N_TESTING_NODE_PAIRS = 10**4
 
 
 def _get_networkx_distance(g: nx.Graph, u, v) -> float:
