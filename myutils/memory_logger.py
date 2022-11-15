@@ -1,3 +1,5 @@
+import logging
+import os
 import re
 import sys
 import time
@@ -8,10 +10,13 @@ from typing import Any, Sequence, Union
 import pandas as pd
 
 from myutils import run_command
+from myutils.logging import configure_logging
 
 __all__ = [
     "run_memory_logger",
 ]
+
+logger = logging.getLogger(__name__)
 
 DATE_COL = "date"
 COLUMNS_TO_LOG = [DATE_COL, "used", "available"]
@@ -62,7 +67,7 @@ def run_memory_logger(
     """
 
     file_path = Path(file_path).resolve()
-    print(f"Logging memory state every {step_seconds} seconds to: {file_path}")
+    logger.info(f"Logging memory state every {step_seconds} seconds to: {file_path}")
 
     while True:
         memory_log_row = _get_memory_log_row(with_header=not file_path.exists(), sep=sep)
@@ -74,6 +79,14 @@ def run_memory_logger(
 
 
 def main() -> None:
+    configure_logging(
+        "__main__",
+        stdout=True,
+        stdout_level=logging.DEBUG,
+        telegram_token=os.environ.get("TELEGRAM_LOGGER_TOKEN"),
+        telegram_chat_id=os.environ.get("TELEGRAM_CHAT_ID"),
+    )
+
     args = sys.argv[1:]
 
     if len(args) != 1:
@@ -82,7 +95,12 @@ def main() -> None:
 
     file_path = args[0]
 
-    run_memory_logger(file_path)
+    try:
+        run_memory_logger(file_path)
+    except Exception as exc:  # pylint: disable=broad-except
+        logger.exception("caught exception while logging memory")
+
+        raise exc
 
 
 if __name__ == "__main__":

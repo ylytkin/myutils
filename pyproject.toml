@@ -25,7 +25,7 @@ src_paths = ["myutils", "tests"]
 skip = [".mypy_cache", ".pytest_cache", ".venv"]
 
 [tool.pylint.messages_control]
-disable = "missing-docstring,logging-fstring-interpolation,too-few-public-methods,too-many-arguments"
+disable = "missing-docstring,logging-fstring-interpolation,too-few-public-methods,too-many-arguments,duplicate-code"
 
 [tool.pylint.format]
 max-line-length = "100"

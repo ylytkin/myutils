@@ -91,16 +91,13 @@ def run_backupper(
 
 
 def main() -> None:
-    token = os.environ.get("TELEGRAM_LOGGER_TOKEN")
-    chat_id = os.environ.get("TELEGRAM_CHAT_ID")
-
     configure_logging(
         "__main__",
         "myutils.yandex_disk",
         stdout=True,
         stdout_level=logging.DEBUG,
-        telegram_token=token,
-        telegram_chat_id=chat_id,
+        telegram_token=os.environ.get("TELEGRAM_LOGGER_TOKEN"),
+        telegram_chat_id=os.environ.get("TELEGRAM_CHAT_ID"),
     )
 
     args = sys.argv[1:]
