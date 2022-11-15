@@ -5,6 +5,7 @@ from typing import Any, BinaryIO, Dict, List, Optional, Tuple, Union
 
 import requests
 from requests.adapters import HTTPAdapter
+from requests.exceptions import HTTPError
 
 __all__ = [
     "TelegramBot",
@@ -17,14 +18,7 @@ JsonLike = Union[str, bool, Dict[str, Any], List[Any]]
 
 class TelegramBot:
     SESSION = requests.Session()
-    N_RETRIES = 10
-    SESSION.mount("https://", HTTPAdapter(max_retries=N_RETRIES))
-
-    class TelegramBotError(Exception):
-        pass
-
-    class TelegramBotInteractionError(TelegramBotError):
-        pass
+    SESSION.mount("https://", HTTPAdapter(max_retries=10))
 
     def __init__(self, token: str) -> None:
         self.token: str = token
@@ -33,54 +27,47 @@ class TelegramBot:
 
     def _interact(
         self,
-        method: str,
+        request_method: str,
+        api_method: str,
         params: Optional[Dict[str, Any]] = None,
         files: Union[None, Dict[str, BinaryIO], Dict[str, Tuple[str, str, str]]] = None,
-        post: bool = False,
-        retry: bool = True,
     ) -> JsonLike:
-        n_retries = self.N_RETRIES if retry else 0
+        url = self.base_api_url + api_method
 
-        kwargs = {
-            "method": "POST" if post else "GET",
-            "url": self.base_api_url + method,
-            "params": params,
-            "files": files,
-        }
+        logger.debug(f"request {request_method} via {url} with params {params}, files {files}")
 
-        response_json = None
-
-        while True:
-            response = self.SESSION.request(**kwargs)  # type: ignore
-
-            if (response.status_code == 200) and (
-                response.headers.get("content-type") == "application/json"
-            ):
-                response_json = response.json()
-                result: Optional[JsonLike] = response_json.get("result")
-
-                if result is not None:
-                    return result
-
-            if n_retries > 0:
-                n_retries -= 1
-                time.sleep(2)
-                continue
-
-            break
-
-        msg = (
-            f"Could not get response for method {method}. Args: {kwargs}, status "
-            f"code: {response.status_code} ({response.reason}), json: {response_json}"
+        response = self.SESSION.request(
+            request_method,
+            url,
+            params=params,
+            files=files,
         )
-        raise self.TelegramBotInteractionError(msg)
+        try:
+            response.raise_for_status()
+        except HTTPError as exc:
+            if response.status_code == 504 and response.reason == "Gateway Time-out":
+                time.sleep(1)
+
+                return self._interact(
+                    request_method=request_method,
+                    api_method=api_method,
+                    params=params,
+                    files=files,
+                )
+
+            raise exc
+
+        response_json = response.json()
+        result: JsonLike = response_json["result"]
+
+        return result
 
     def get_me(self) -> JsonLike:
         method = "getMe"
 
-        logger.debug(f"run telegram bot method {method}")
+        logger.debug(f"get bot info using method {method}")
 
-        return self._interact(method)
+        return self._interact("GET", api_method=method)
 
     def get_updates(
         self,
@@ -89,7 +76,7 @@ class TelegramBot:
     ) -> List[Any]:
         method = "getUpdates"
 
-        logger.debug(f"run telegram bot method {method} with offset={offset}, timeout={timeout}")
+        logger.debug(f"get updates using method {method}")
 
         params = {
             "timeout": timeout,
@@ -98,7 +85,7 @@ class TelegramBot:
         if offset is not None:
             params["offset"] = offset
 
-        result: List[Any] = self._interact(method, params)  # type: ignore
+        result: List[Any] = self._interact("GET", api_method=method, params=params)  # type: ignore
 
         return result
 
@@ -106,9 +93,13 @@ class TelegramBot:
         method = "getFile"
         params = {"file_id": file_id}
 
-        logger.debug(f"run telegram bot method {method}")
+        logger.debug(f"get file download url using method {method}")
 
-        result: Dict[str, Any] = self._interact(method, params)  # type: ignore
+        result: Dict[str, Any] = self._interact(
+            "GET",
+            api_method=method,
+            params=params,
+        )  # type: ignore
         file_path: str = result["file_path"]
 
         return self.base_file_url + file_path
@@ -122,7 +113,7 @@ class TelegramBot:
     ) -> JsonLike:
         method = "sendMessage"
 
-        logger.debug(f"run telegram bot method {method}")
+        logger.debug(f"send text message using method {method}")
 
         params = {
             "chat_id": chat_id,
@@ -131,28 +122,29 @@ class TelegramBot:
             "disable_notification": disable_notification,
         }
 
-        return self._interact(method, params, post=True)
+        return self._interact("POST", api_method=method, params=params)
 
     def delete_message(
         self,
         chat_id: Union[int, str],
         message_id: Union[int, str],
         missing_ok: bool = True,
-    ) -> bool:
+    ) -> None:
         method = "deleteMessage"
 
-        logger.debug(f"run telegram bot method {method}")
+        logger.debug(f"delete message using method {method} with missing_ok={missing_ok}")
 
         params = {"chat_id": chat_id, "message_id": message_id}
 
         try:
-            success: bool = self._interact(method, params, post=True, retry=False)  # type: ignore
-
-            return success
-
-        except self.TelegramBotInteractionError as exc:
-            if missing_ok:
-                return False
+            self._interact("POST", api_method=method, params=params)
+        except HTTPError as exc:
+            if (
+                missing_ok
+                and exc.response.status_code == 400
+                and exc.response.reason == "Bad Request"
+            ):
+                return
 
             raise exc
 
@@ -166,7 +158,7 @@ class TelegramBot:
     ) -> JsonLike:
         method = "sendDocument"
 
-        logger.debug(f"run telegram bot method {method}")
+        logger.debug(f"send text as file using method {method}")
 
         params = {
             "chat_id": chat_id,
@@ -180,7 +172,7 @@ class TelegramBot:
             "document": (file_name, text, "text/plain"),
         }
 
-        result = self._interact(method, params, files, post=True)
+        result = self._interact("POST", api_method=method, params=params, files=files)
 
         return result
 
@@ -193,7 +185,7 @@ class TelegramBot:
     ) -> JsonLike:
         method = "sendDocument"
 
-        logger.debug(f"run telegram bot method {method}")
+        logger.debug(f"send file using method {method}")
 
         params = {"chat_id": chat_id, "parse_mode": parse_mode}
 
@@ -202,28 +194,38 @@ class TelegramBot:
 
         with Path(file_path).open("rb") as file:
             files = {"document": file}
-            result = self._interact(method, params, files, post=True)  # type: ignore
+            result = self._interact(
+                "POST",
+                api_method=method,
+                params=params,
+                files=files,  # type: ignore
+            )
 
         return result
 
     def send_image(
         self,
         chat_id: Union[int, str],
-        image_fpath: Path,
+        image_file_path: Path,
         caption: Optional[str] = None,
         parse_mode: str = "html",
     ) -> JsonLike:
         method = "sendPhoto"
 
-        logger.debug(f"run telegram bot method {method}")
+        logger.debug(f"send image using method {method}")
 
         params = {"chat_id": chat_id, "parse_mode": parse_mode}
 
         if caption:
             params["caption"] = caption
 
-        with Path(image_fpath).open("rb") as file:
+        with Path(image_file_path).open("rb") as file:
             files = {"photo": file}
-            result = self._interact(method, params, files, post=True)  # type: ignore
+            result = self._interact(
+                "POST",
+                api_method=method,
+                params=params,
+                files=files,  # type: ignore
+            )
 
         return result

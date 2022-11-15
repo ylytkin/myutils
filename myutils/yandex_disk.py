@@ -1,13 +1,17 @@
+import logging
 import os
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Union
 
 import requests
 from requests.adapters import HTTPAdapter
+from requests.exceptions import HTTPError
 
 __all__ = [
     "YandexDiskAPI",
 ]
+
+logger = logging.getLogger(__name__)
 
 JsonLike = Union[str, bool, Dict[str, Any], List[Any]]
 
@@ -54,6 +58,8 @@ class YandexDiskAPI:
         if not params["path"].startswith("disk:/"):
             raise ValueError("yandex disk path must start with disk:/")
 
+        logger.debug(f"request {request_method} via {url} with params {params}")
+
         response = self.SESSION.request(request_method, url, params=params, headers=self.headers)
         response.raise_for_status()
 
@@ -61,25 +67,44 @@ class YandexDiskAPI:
 
         return response_json
 
-    def get_file_info(self, path: str) -> JsonLike:
+    def get_object_info(self, path: str) -> JsonLike:
         method = "resources"
-        params = {"path": path}
+        params = {"path": path, "limit": 1}
+
+        logger.debug(f"get file info using method {method}")
 
         return self._interact("GET", api_method=method, params=params)
 
-    def publish_object(self, path: str) -> JsonLike:
+    def publish_object(self, path: str) -> None:
         method = "resources/publish"
         params = {"path": path}
 
-        return self._interact("PUT", api_method=method, params=params)
+        logger.debug(f"publish file using method {method}")
+
+        self._interact("PUT", api_method=method, params=params)
 
     def publish_object_and_get_link(self, path: str) -> str:
         self.publish_object(path)
-        file_info: Dict[str, Any] = self.get_file_info(path)  # type: ignore
+        object_info: Dict[str, Any] = self.get_object_info(path)  # type: ignore
 
-        file_link: str = file_info["public_url"]
+        object_link: str = object_info["public_url"]
 
-        return file_link
+        return object_link
+
+    def create_folder(self, path: str, exist_ok: bool = True) -> None:
+        method = "resources"
+        params = {"path": path}
+
+        logger.debug(f"create folder using method {method}")
+
+        try:
+            self._interact("PUT", api_method=method, params=params)
+
+        except HTTPError as exc:
+            if exist_ok and exc.response.status_code == 409 and exc.response.reason == "CONFLICT":
+                return
+
+            raise exc
 
     def get_file_list(self, path: str, files_only: bool = True) -> List[Dict[str, Any]]:
         method = "resources"
@@ -87,17 +112,25 @@ class YandexDiskAPI:
         offset = 0
         total = None
 
+        logger.debug(f"get file list using method {method}")
+
         file_list: List[Dict[str, Any]] = []
 
         while total is None or offset < total:
             params = {"path": path, "limit": limit, "offset": offset}
+
+            logger.debug(f"> offset {offset} (total {total})")
 
             response: Dict[str, Any] = self._interact(  # type: ignore
                 "GET",
                 api_method=method,
                 params=params,
             )
-            result: Dict[str, Any] = response["_embedded"]
+
+            try:
+                result: Dict[str, Any] = response["_embedded"]
+            except KeyError as exc:
+                raise ValueError(f"path is not a directory: {path}") from exc
 
             total = result["total"]
             offset += limit
@@ -113,6 +146,8 @@ class YandexDiskAPI:
         method = "resources/download"
         params = {"path": file_path}
 
+        logger.debug(f"get file download url using method {method}")
+
         response: Dict[str, Any] = self._interact(  # type: ignore
             "GET",
             api_method=method,
@@ -124,6 +159,8 @@ class YandexDiskAPI:
 
     def download_file(self, disk_file_path: str, local_file_path: Union[str, Path]) -> None:
         url = self._get_file_download_url(disk_file_path)
+
+        logger.debug(f"download file {disk_file_path} to {local_file_path}")
 
         response = self.SESSION.get(url, headers=self.headers)
         response.raise_for_status()
@@ -141,6 +178,8 @@ class YandexDiskAPI:
         method = "resources/upload"
         params = {"path": disk_file_path, "overwrite": overwrite}
 
+        logger.debug(f"get file upload url using method {method}")
+
         response: Dict[str, Any] = self._interact(  # type: ignore
             "GET",
             api_method=method,
@@ -156,8 +195,10 @@ class YandexDiskAPI:
         local_file_path: Union[str, Path],
         disk_file_path: str,
         overwrite: bool = False,
-    ) -> JsonLike:
+    ) -> None:
         url = self._get_file_upload_url(disk_file_path, overwrite=overwrite)
+
+        logger.debug(f"upload file {local_file_path} to {disk_file_path}")
 
         local_file_path = Path(local_file_path)
 
@@ -165,31 +206,27 @@ class YandexDiskAPI:
             response = self.SESSION.put(url, data=file, headers=self.headers)
             response.raise_for_status()
 
-        response_json: JsonLike = response.json()
-
-        return response_json
-
-    def delete_file(self, file_path: str) -> JsonLike:
+    def delete_object(self, path: str) -> None:
         method = "resources"
-        params = {"path": file_path}
+        params = {"path": path}
 
-        response: JsonLike = self._interact("DELETE", api_method=method, params=params)
+        logger.debug(f"delete file using method {method}")
 
-        return response
+        self._interact("DELETE", api_method=method, params=params)
 
-    def move_file(
+    def move_object(
         self,
-        disk_from_file_path: str,
-        disk_to_file_path: str,
+        disk_source_path: str,
+        disk_target_path: str,
         overwrite: bool = False,
-    ) -> JsonLike:
+    ) -> None:
         method = "resources/move"
         params = {
-            "from": disk_from_file_path,
-            "path": disk_to_file_path,
+            "from": disk_source_path,
+            "path": disk_target_path,
             "overwrite": overwrite,
         }
 
-        response: JsonLike = self._interact("POST", api_method=method, params=params)
+        logger.debug(f"move file using method {method}")
 
-        return response
+        self._interact("POST", api_method=method, params=params)
