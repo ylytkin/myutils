@@ -30,8 +30,7 @@ disable = "missing-docstring,logging-fstring-interpolation,too-few-public-method
 [tool.pylint.format]
 max-line-length = "100"
 indent-string = "    "
-good-names = "db, i, j"
+good-names = "db, i, j, df, ax"
 
 [tool.pylint.master]
 ignore = ".venv, tests"
-max-instance-attributes = 10

@@ -3,6 +3,7 @@ from typing import Tuple
 
 __all__ = [
     "run_command",
+    "escape_html",
 ]
 
 
@@ -33,3 +34,16 @@ def run_command(cmd: str, strip: bool = True) -> Tuple[str, str]:
         err = err.strip()
 
     return out, err
+
+
+def escape_html(text: str) -> str:
+    """Escape HTML characters in string.
+
+    Args:
+        text (str): text to process
+
+    Returns:
+        str: escaped text
+    """
+
+    return text.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
