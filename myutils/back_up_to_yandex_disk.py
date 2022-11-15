@@ -48,7 +48,7 @@ def _back_up_file(
 
         local_back_up_file_path = local_directory_path / back_up_file_name
 
-        logger.info(f"falling back to local back up to {local_back_up_file_path}")
+        logger.warning(f"falling back to local back up to {local_back_up_file_path}")
 
         shutil.copy(file_path, local_back_up_file_path)
 
@@ -98,6 +98,7 @@ def main() -> None:
         stdout_level=logging.DEBUG,
         telegram_token=os.environ.get("TELEGRAM_LOGGER_TOKEN"),
         telegram_chat_id=os.environ.get("TELEGRAM_CHAT_ID"),
+        telegram_level=logging.WARNING,
     )
 
     args = sys.argv[1:]

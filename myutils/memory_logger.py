@@ -85,6 +85,7 @@ def main() -> None:
         stdout_level=logging.DEBUG,
         telegram_token=os.environ.get("TELEGRAM_LOGGER_TOKEN"),
         telegram_chat_id=os.environ.get("TELEGRAM_CHAT_ID"),
+        telegram_level=logging.WARNING,
     )
 
     args = sys.argv[1:]

@@ -38,7 +38,7 @@ def configure_logging(
     str_format: str = "%(asctime)s %(name)-35s %(levelname)-8s %(message)s",
     msg_format: str = "```\n%(asctime)s\n%(name)s\n%(levelname)s\n\n%(message)s\n```",
     date_format: str = "%Y-%m-%d %H:%M:%S",
-    propagate: bool = True,
+    propagate: bool = False,
 ) -> None:
     formatters = {
         "standard": {
