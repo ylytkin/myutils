@@ -106,7 +106,7 @@ class YandexDiskAPI:
 
             raise exc
 
-    def get_file_list(self, path: str, files_only: bool = True) -> List[Dict[str, Any]]:
+    def get_file_list(self, path: str, files_only: bool = False) -> List[Dict[str, Any]]:
         method = "resources"
         limit = 20
         offset = 0
@@ -141,6 +141,13 @@ class YandexDiskAPI:
             file_list = [file for file in file_list if file["type"] == "file"]
 
         return file_list
+
+    def get_file_paths_list(self, path: str) -> List[str]:
+        file_list = self.get_file_list(path, files_only=False)
+
+        file_paths_list: List[str] = [file_info["path"] for file_info in file_list]
+
+        return file_paths_list
 
     def _get_file_download_url(self, file_path: str) -> str:
         method = "resources/download"

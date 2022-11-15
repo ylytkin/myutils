@@ -1,6 +1,6 @@
 import logging
 import re
-from typing import Any
+from typing import Any, Union
 
 from myutils.telegram_bot import TelegramBot
 
@@ -47,7 +47,11 @@ class TelegramLogFormatter(logging.Formatter):
 
 class TelegramLogHandler(logging.Handler):
     def __init__(
-        self, token: str, chat_id: int, max_message_length: int = 4000, preview_length: int = 1000
+        self,
+        token: str,
+        chat_id: Union[int, str],
+        max_message_length: int = 4000,
+        preview_length: int = 1000,
     ) -> None:
         super().__init__()
 

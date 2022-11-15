@@ -33,7 +33,7 @@ def configure_logging(
     file_level: int = logging.DEBUG,
     file_encoding: str = "utf-8",
     telegram_token: Optional[str] = None,
-    telegram_chat_id: Optional[int] = None,
+    telegram_chat_id: Union[None, int, str] = None,
     telegram_level: int = logging.INFO,
     str_format: str = "%(asctime)s %(name)-35s %(levelname)-8s %(message)s",
     msg_format: str = "```\n%(asctime)s\n%(name)s\n%(levelname)s\n\n%(message)s\n```",
@@ -86,7 +86,7 @@ def configure_logging(
     logger_config_ = {
         "handlers": list(handlers),
         "level": level,
-        "propagate": propagate,
+        "propagate": int(propagate),
     }
 
     loggers = {}
