@@ -4,10 +4,38 @@ from pathlib import Path
 from typing import Any, Optional, Union
 
 __all__ = [
+    "LogFormatter",
     "configure_logging",
 ]
 
 logger = logging.getLogger(__name__)
+
+
+class LogFormatter(logging.Formatter):
+    def format(self, record: logging.LogRecord) -> str:
+        record.message = record.getMessage()
+
+        if self.usesTime():
+            record.asctime = self.formatTime(record, self.datefmt)
+
+        message = self.formatMessage(record)
+
+        if record.exc_info:
+            record.exc_text = self.formatException(record.exc_info)
+
+        if record.exc_text:
+            if message[-1] != "\n":
+                message += "\n"
+
+            message += record.exc_text
+
+        if record.stack_info:
+            if message[-1] != "\n":
+                message += "\n"
+
+            message += self.formatStack(record.stack_info)
+
+        return message
 
 
 def _check_file_writeable(file_path: Union[None, str, Path], encoding: str) -> bool:
@@ -42,7 +70,7 @@ def configure_logging(
 ) -> None:
     formatters = {
         "standard": {
-            "class": "logging.Formatter",
+            "class": "myutils.logging.LogFormatter",
             "format": str_format,
             "datefmt": date_format,
         },

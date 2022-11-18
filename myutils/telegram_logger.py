@@ -2,6 +2,7 @@ import logging
 import re
 from typing import Any, Union
 
+from myutils.logging import LogFormatter
 from myutils.telegram_bot import TelegramBot
 
 __all__ = [
@@ -10,39 +11,11 @@ __all__ = [
 ]
 
 
-class TelegramLogFormatter(logging.Formatter):
-    def __init__(self, *args: Any, **kwargs: Any) -> None:
-        super().__init__(*args, **kwargs)
-
+class TelegramLogFormatter(LogFormatter):
     def formatException(self, *args: Any, **kwargs: Any) -> str:
         string = super().formatException(*args, **kwargs)
 
         return f"```\n{string}\n```"
-
-    def format(self, record: logging.LogRecord) -> str:
-        record.message = record.getMessage()
-
-        if self.usesTime():
-            record.asctime = self.formatTime(record, self.datefmt)
-
-        message = self.formatMessage(record)
-
-        if record.exc_info:
-            record.exc_text = self.formatException(record.exc_info)
-
-        if record.exc_text:
-            if message[-1] != "\n":
-                message += "\n"
-
-            message += record.exc_text
-
-        if record.stack_info:
-            if message[-1] != "\n":
-                message += "\n"
-
-            message += self.formatStack(record.stack_info)
-
-        return message
 
 
 class TelegramLogHandler(logging.Handler):
