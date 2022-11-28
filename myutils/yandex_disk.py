@@ -101,7 +101,7 @@ class YandexDiskAPI:
             self._interact("PUT", api_method=method, params=params)
 
         except HTTPError as exc:
-            if exist_ok and exc.response.status_code == 409 and exc.response.reason == "CONFLICT":
+            if exist_ok and exc.response.status_code == 409 and exc.response.reason.lower() == "conflict":
                 return
 
             raise exc
