@@ -19,7 +19,7 @@ logger = logging.getLogger(__name__)
 YANDEX_DISK_API = YandexDiskAPI()
 
 BASE_DIRECTORY_PATH = "disk:/Apps/Backups"
-FALLBACK_DIRECTORY_PATH = "~/.backups"
+FALLBACK_DIRECTORY_PATH = Path(os.environ['HOME']) / ".backups"
 
 
 def _back_up_file(
@@ -43,7 +43,7 @@ def _back_up_file(
     except Exception:  # pylint: disable=broad-except
         logger.exception("could not upload to yandex disk")
 
-        local_directory_path = Path(FALLBACK_DIRECTORY_PATH) / app_name
+        local_directory_path = FALLBACK_DIRECTORY_PATH / app_name
         local_directory_path.mkdir(exist_ok=True, parents=True)
 
         local_back_up_file_path = local_directory_path / back_up_file_name
