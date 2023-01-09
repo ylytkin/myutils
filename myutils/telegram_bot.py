@@ -31,10 +31,14 @@ class TelegramBot:
         api_method: str,
         params: Optional[Dict[str, Any]] = None,
         files: Union[None, Dict[str, BinaryIO], Dict[str, Tuple[str, str, str]]] = None,
+        n_retries: int = 10,
     ) -> JsonLike:
         url = self.base_api_url + api_method
 
-        logger.debug(f"request {request_method} via {url} with params {params}, files {files}")
+        logger.debug(
+            f"request {request_method} via {url} with params {params}, "
+            f"files {files}, retries {n_retries}"
+        )
 
         response = self.SESSION.request(
             request_method,
@@ -45,7 +49,14 @@ class TelegramBot:
         try:
             response.raise_for_status()
         except HTTPError as exc:
-            if response.status_code == 504 and response.reason == "Gateway Time-out":
+            if n_retries > 0 and response.status_code in (502, 504):
+                n_retries -= 1
+
+                logger.exception(
+                    f"server-side error while interacting with Telegram Bot. "
+                    f"retries left: {n_retries}"
+                )
+
                 time.sleep(1)
 
                 return self._interact(
@@ -53,6 +64,7 @@ class TelegramBot:
                     api_method=api_method,
                     params=params,
                     files=files,
+                    n_retries=n_retries,
                 )
 
             raise exc
@@ -229,3 +241,32 @@ class TelegramBot:
             )
 
         return result
+
+    @staticmethod
+    def extract_message_command(message: Dict[str, Any]) -> Optional[str]:
+        entities = message.get("entities", [])
+        commands = [entity for entity in entities if entity["type"] == "bot_command"]
+
+        if len(commands) == 0:
+            return None
+
+        if len(commands) > 1:
+            logger.warning(f"multiple commands in a message. extracting only first one. {message}")
+
+        command_item = commands[0]
+        offset = command_item["offset"]
+        length = command_item["length"]
+
+        if offset != 0:
+            return None
+
+        command: str = message["text"][offset:length]
+
+        return command
+
+    @staticmethod
+    def extract_chat_and_message_id(message: Dict[str, Any]) -> Tuple[int, int]:
+        chat_id: int = message["chat"]["id"]
+        message_id: int = message["message_id"]
+
+        return chat_id, message_id

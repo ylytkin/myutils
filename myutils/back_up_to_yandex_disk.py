@@ -19,7 +19,7 @@ logger = logging.getLogger(__name__)
 YANDEX_DISK_API = YandexDiskAPI()
 
 BASE_DIRECTORY_PATH = "disk:/Apps/Backups"
-FALLBACK_DIRECTORY_PATH = Path(os.environ['HOME']) / ".backups"
+FALLBACK_DIRECTORY_PATH = Path(os.environ["HOME"]) / ".backups"
 
 
 def _back_up_file(
