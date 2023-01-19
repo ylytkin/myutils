@@ -286,11 +286,13 @@ class TelegramBot:
         caption: Optional[str] = None,
         parse_mode: str = "html",
     ) -> JsonLike:
+        image_file_path = Path(image_file_path)
+
         buffer_data: str = json.dumps(
             {
                 "chat_id": chat_id,
                 "message_id": message_id,
-                "image_file_path": image_file_path,
+                "image_file_path": image_file_path.as_posix(),
                 "caption": caption,
                 "parse_mode": parse_mode,
             }
