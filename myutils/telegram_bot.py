@@ -1,3 +1,4 @@
+import json
 import logging
 import time
 from pathlib import Path
@@ -136,6 +137,26 @@ class TelegramBot:
 
         return self._interact("POST", api_method=method, params=params)
 
+    def edit_text_message(
+        self,
+        chat_id: Union[int, str],
+        message_id: Union[int, str],
+        text: str,
+        parse_mode: str = "html",
+    ) -> JsonLike:
+        method = "editMessageText"
+
+        logger.debug(f"edit text message using method {method}")
+
+        params = {
+            "chat_id": chat_id,
+            "message_id": message_id,
+            "text": text,
+            "parse_mode": parse_mode,
+        }
+
+        return self._interact("POST", api_method=method, params=params)
+
     def delete_message(
         self,
         chat_id: Union[int, str],
@@ -239,6 +260,71 @@ class TelegramBot:
                 params=params,
                 files=files,  # type: ignore
             )
+
+        return result
+
+    @staticmethod
+    def _get_max_size_photo_id(
+        photos: List[Dict[str, Any]],
+    ) -> str:
+        def file_size_sorter(photo: Dict[str, Any]) -> int:
+            file_size: int = photo["file_size"]
+
+            return file_size
+
+        max_size_photo = max(photos, key=file_size_sorter)
+        file_id: str = max_size_photo["file_id"]
+
+        return file_id
+
+    def edit_image(
+        self,
+        chat_id: Union[int, str],
+        message_id: Union[int, str],
+        buffer_chat_id: Union[int, str],
+        image_file_path: Path,
+        caption: Optional[str] = None,
+        parse_mode: str = "html",
+    ) -> JsonLike:
+        buffer_data: str = json.dumps(
+            {
+                "chat_id": chat_id,
+                "message_id": message_id,
+                "image_file_path": image_file_path,
+                "caption": caption,
+                "parse_mode": parse_mode,
+            }
+        )
+        logger.debug(f"create buffer message to upload edited image: {buffer_data}")
+
+        buffer_message: Dict[str, Any] = self.send_image(  # type: ignore
+            chat_id=buffer_chat_id,
+            image_file_path=image_file_path,
+            caption=f"<code>{buffer_data}</code>",
+            parse_mode="HTML",
+        )
+        image_file_id = self._get_max_size_photo_id(buffer_message["photo"])
+
+        method = "editMessageMedia"
+
+        logger.debug(f"edit image using method {method}")
+
+        params = {
+            "chat_id": chat_id,
+            "message_id": message_id,
+            "media": json.dumps(
+                {
+                    "type": "photo",
+                    "media": image_file_id,
+                    "caption": caption,
+                    "parse_mode": parse_mode,
+                }
+            ),
+        }
+
+        result = self._interact("POST", api_method=method, params=params)
+
+        self.delete_message(chat_id=buffer_chat_id, message_id=buffer_message["message_id"])
 
         return result
 
