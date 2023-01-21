@@ -50,6 +50,15 @@ class TelegramBot:
         try:
             response.raise_for_status()
         except HTTPError as exc:
+            if response.status_code == 400:  # bad request
+                exception_message = exc.args[0]
+                error_description = response.json()["description"]
+                new_exception_message = f"{exception_message} /// {error_description}"
+
+                exc.args = (new_exception_message,)
+
+                raise exc
+
             if n_retries > 0 and response.status_code in (502, 504):
                 n_retries -= 1
 
@@ -285,7 +294,7 @@ class TelegramBot:
         image_file_path: Path,
         caption: Optional[str] = None,
         parse_mode: str = "html",
-    ) -> JsonLike:
+    ) -> Optional[JsonLike]:
         image_file_path = Path(image_file_path)
 
         buffer_data: str = json.dumps(
@@ -324,7 +333,20 @@ class TelegramBot:
             ),
         }
 
-        result = self._interact("POST", api_method=method, params=params)
+        result = None
+
+        try:
+            result = self._interact("POST", api_method=method, params=params)
+        except HTTPError as exc:
+            if exc.response.status_code != 400:
+                raise exc
+
+            error_description = exc.response.json()["description"]
+
+            if "message is not modified" not in error_description:
+                raise exc
+
+            logger.debug("edited image was not modified")
 
         self.delete_message(chat_id=buffer_chat_id, message_id=buffer_message["message_id"])
 
