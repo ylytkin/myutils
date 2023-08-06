@@ -3,9 +3,9 @@ import os
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Union
 
-import requests
-from requests.adapters import HTTPAdapter
 from requests.exceptions import HTTPError
+
+from myutils.utils import create_requests_session
 
 __all__ = [
     "YandexDiskAPI",
@@ -20,8 +20,7 @@ class YandexDiskAPI:
     YANDEX_DISK_API_TOKEN_KEY = "YANDEX_DISK_API_TOKEN"
     YANDEX_DISK_API_BASE_URL = "https://cloud-api.yandex.net/v1/disk/"
 
-    SESSION = requests.Session()
-    SESSION.mount("https://", HTTPAdapter(max_retries=10))
+    SESSION = create_requests_session()
 
     def __init__(self, token: Optional[str] = None) -> None:
         self.token = self._get_token(token)

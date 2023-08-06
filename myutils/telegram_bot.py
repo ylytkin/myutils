@@ -1,12 +1,12 @@
 import json
 import logging
-import time
 from pathlib import Path
 from typing import Any, BinaryIO, Dict, List, Optional, Tuple, Union
 
 import requests
-from requests.adapters import HTTPAdapter
 from requests.exceptions import HTTPError
+
+from myutils.utils import create_requests_session
 
 __all__ = [
     "TelegramBot",
@@ -18,13 +18,27 @@ JsonLike = Union[str, bool, Dict[str, Any], List[Any]]
 
 
 class TelegramBot:
-    SESSION = requests.Session()
-    SESSION.mount("https://", HTTPAdapter(max_retries=10))
+    SESSION = create_requests_session()
 
     def __init__(self, token: str) -> None:
         self.token: str = token
         self.base_api_url: str = f"https://api.telegram.org/bot{self.token}/"
         self.base_file_url: str = f"https://api.telegram.org/file/bot{self.token}/"
+
+    @staticmethod
+    def _add_telegram_api_error_info_to_exception_inplace(
+        response: requests.Response,
+        exception: Exception,
+    ) -> None:
+        exception_args_list = list(exception.args)
+        exception_message = exception_args_list[0]
+
+        error_description = response.json().get("description")
+        new_exception_message = f"{exception_message} /// from Telegram API: {error_description}"
+
+        exception_args_list[0] = new_exception_message
+
+        exception.args = tuple(exception_args_list)
 
     def _interact(
         self,
@@ -32,13 +46,13 @@ class TelegramBot:
         api_method: str,
         params: Optional[Dict[str, Any]] = None,
         files: Union[None, Dict[str, BinaryIO], Dict[str, Tuple[str, str, str]]] = None,
-        n_retries: int = 10,
+        timeout: int = 15,  # must be >10, or will conflict with long polling
     ) -> JsonLike:
         url = self.base_api_url + api_method
 
         logger.debug(
-            f"request {request_method} via {url} with params {params}, "
-            f"files {files}, retries {n_retries}"
+            f"request {request_method} via {url} with params={params}, "
+            f"files={files}, timeout={timeout}"
         )
 
         response = self.SESSION.request(
@@ -46,41 +60,17 @@ class TelegramBot:
             url,
             params=params,
             files=files,
+            timeout=timeout,
         )
+
         try:
             response.raise_for_status()
+
         except HTTPError as exc:
-            if response.status_code == 400:  # bad request
-                exception_message = exc.args[0]
-                error_description = response.json()["description"]
-                new_exception_message = f"{exception_message} /// {error_description}"
-
-                exc.args = (new_exception_message,)
-
-                raise exc
-
-            if n_retries > 0 and response.status_code in (502, 504):
-                n_retries -= 1
-
-                logger.exception(
-                    f"server-side error while interacting with Telegram Bot. "
-                    f"retries left: {n_retries}"
-                )
-
-                time.sleep(1)
-
-                return self._interact(
-                    request_method=request_method,
-                    api_method=api_method,
-                    params=params,
-                    files=files,
-                    n_retries=n_retries,
-                )
-
+            self._add_telegram_api_error_info_to_exception_inplace(response, exc)
             raise exc
 
-        response_json = response.json()
-        result: JsonLike = response_json["result"]
+        result: JsonLike = response.json()["result"]
 
         return result
 
@@ -107,7 +97,11 @@ class TelegramBot:
         if offset is not None:
             params["offset"] = offset
 
-        result: List[Any] = self._interact("GET", api_method=method, params=params)  # type: ignore
+        result: List[Any] = self._interact(  # type: ignore
+            "GET",
+            api_method=method,
+            params=params,
+        )
 
         return result
 
@@ -181,14 +175,20 @@ class TelegramBot:
         try:
             self._interact("POST", api_method=method, params=params)
         except HTTPError as exc:
-            if (
-                missing_ok
-                and exc.response.status_code == 400
-                and exc.response.reason == "Bad Request"
-            ):
-                return
+            telegram_error_message = exc.response.json().get("description", "").lower()
+
+            if missing_ok and exc.response.status_code == 400:
+                if "message to delete not found" in telegram_error_message:
+                    logger.debug("message was deleted by user")
+                    return None
+
+                if "message can't be deleted for everyone" in telegram_error_message:
+                    logger.debug("message is too old and cannot be deleted")
+                    return None
 
             raise exc
+
+        return None
 
     def send_text_as_file(
         self,
@@ -341,7 +341,7 @@ class TelegramBot:
             if exc.response.status_code != 400:
                 raise exc
 
-            error_description = exc.response.json()["description"]
+            error_description = exc.response.json().get("description", "").lower()
 
             if "message is not modified" not in error_description:
                 raise exc

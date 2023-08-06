@@ -1,4 +1,4 @@
-from myutils import run_command
+from myutils.utils import run_command
 
 
 def test_run_command():

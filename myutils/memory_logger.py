@@ -9,8 +9,8 @@ from typing import Any, Sequence, Union
 
 import pandas as pd
 
-from myutils import run_command
 from myutils.logging import configure_logging
+from myutils.utils import run_command
 
 __all__ = [
     "run_memory_logger",
