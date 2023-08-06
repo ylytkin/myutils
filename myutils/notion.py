@@ -272,7 +272,7 @@ class NotionAPI:
                 return None
             return "".join(item["plain_text"] for item in value_contents)
 
-        if value_type in {"number", "boolean"}:
+        if value_type in {"number", "boolean", "string"}:
             return value_contents
 
         if value_type in {"select", "status"}:
