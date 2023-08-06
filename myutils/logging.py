@@ -38,12 +38,12 @@ class LogFormatter(logging.Formatter):
         return message
 
 
-def _check_file_writeable(file_path: Union[None, str, Path], encoding: str) -> bool:
+def _check_file_writeable(file_path: Union[None, str, Path], mode: str, encoding: str) -> bool:
     if file_path is None:
         return False
 
     try:
-        with open(file_path, "a", encoding=encoding):
+        with open(file_path, mode, encoding=encoding):
             pass
     except FileNotFoundError:
         return False
@@ -60,11 +60,12 @@ def configure_logging(
     file_path: Union[None, str, Path] = None,
     file_level: int = logging.DEBUG,
     file_encoding: str = "utf-8",
+    file_mode: str = "a",
     telegram_token: Optional[str] = None,
     telegram_chat_id: Union[None, int, str] = None,
     telegram_level: int = logging.INFO,
-    str_format: str = "%(asctime)s %(name)-35s %(levelname)-8s %(message)s",
-    msg_format: str = "```\n%(asctime)s\n%(name)s\n%(levelname)s\n\n%(message)s\n```",
+    str_format: str = "%(asctime)s.%(msecs)03d %(name)-35s %(levelname)-8s %(message)s",
+    msg_format: str = "```\n%(asctime)s.%(msecs)03d\n%(name)s\n%(levelname)s\n\n%(message)s\n```",
     date_format: str = "%Y-%m-%d %H:%M:%S",
     propagate: bool = False,
 ) -> None:
@@ -90,14 +91,18 @@ def configure_logging(
             "level": stdout_level,
         }
 
-    is_file_writeable = _check_file_writeable(file_path, encoding=file_encoding)
+    is_file_writeable = _check_file_writeable(
+        file_path,
+        mode=file_mode,
+        encoding=file_encoding,
+    )
 
     if file_path is not None and is_file_writeable:
         handlers["file"] = {
             "class": "logging.FileHandler",
             "formatter": "standard",
             "filename": file_path,
-            "mode": "a",
+            "mode": file_mode,
             "encoding": file_encoding,
             "level": file_level,
         }

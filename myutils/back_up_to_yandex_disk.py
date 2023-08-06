@@ -53,13 +53,13 @@ def _back_up_file(
         shutil.copy(file_path, local_back_up_file_path)
 
 
-def _run_backupper_step(file_app_pairs: Sequence[Tuple[Union[str, Path], str]]) -> None:
-    for file_path, app_name in file_app_pairs:
+def _run_backupper_step(file_path_app_name_pairs: Sequence[Tuple[Union[str, Path], str]]) -> None:
+    for file_path, app_name in file_path_app_name_pairs:
         _back_up_file(file_path, app_name=app_name)
 
 
 def run_backupper(
-    *file_app_pairs: Tuple[Union[str, Path], str],
+    *file_path_app_name_pairs: Tuple[Union[str, Path], str],
     step_hours: int = 24,
 ) -> None:
     """Run backupper. Useful for backing up databases.
@@ -67,18 +67,18 @@ def run_backupper(
     By default backs up every 24 hours.
 
     Args:
-        *file_app_pairs (Tuple[Union[str, Path], str]):
+        *file_path_app_name_pairs (Tuple[Union[str, Path], str]):
             tuples of file path and app name
         step_hours (int, optional): Back up frequence. Defaults to 24.
     """
 
-    logger.info(f"start backupper every {step_hours} hours with files {file_app_pairs}")
+    logger.info(f"start backupper every {step_hours} hours with files {file_path_app_name_pairs}")
 
     while True:
         next_run_time = datetime.utcnow() + timedelta(hours=step_hours)
 
         try:
-            _run_backupper_step(file_app_pairs)
+            _run_backupper_step(file_path_app_name_pairs)
 
         except Exception as exc:
             logger.exception("caught exception while running back up")
@@ -106,9 +106,9 @@ def main() -> None:
     if len(args) == 0 or len(args) % 2 > 0:
         print("Please provide file-directory pairs")
 
-    file_app_pairs = [(args[i], args[i + 1]) for i in range(0, len(args), 2)]
+    file_path_app_name_pairs = [(args[i], args[i + 1]) for i in range(0, len(args), 2)]
 
-    run_backupper(*file_app_pairs)
+    run_backupper(*file_path_app_name_pairs)
 
 
 if __name__ == "__main__":

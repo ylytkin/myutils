@@ -1,11 +1,11 @@
 from setuptools import setup
 
-with open('requirements.txt') as file:
+with open('requirements.txt', encoding='utf-8') as file:
     requirements = [line.strip() for line in file.readlines()]
 
 setup(
     name='myutils',
-    version='1.3.3',
+    version='1.4.0',
     description='Some small Python utility functions I frequently use.',
     url='https://github.com/ylytkin/myutils',
     author='Yura Lytkin',
