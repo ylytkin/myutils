@@ -54,6 +54,21 @@ class NotionAPI:
 
         return query
 
+    @staticmethod
+    def _add_notion_api_error_info_to_exception_inplace(
+        response: requests.Response,
+        exception: Exception,
+    ) -> None:
+        exception_args_list = list(exception.args)
+        exception_message = exception_args_list[0]
+
+        error_description = response.json().get("message")
+        new_exception_message = f"{exception_message} /// from Notion API: {error_description}"
+
+        exception_args_list[0] = new_exception_message
+
+        exception.args = tuple(exception_args_list)
+
     # pylint: disable=too-many-branches
     def _request(
         self,
@@ -134,6 +149,7 @@ class NotionAPI:
                     raise exc
 
             else:
+                self._add_notion_api_error_info_to_exception_inplace(response, exc)
                 raise exc
 
             return self._request(
