@@ -1,15 +1,16 @@
-from typing import Dict
+from typing import Any, Dict, List, Union
 
 import pandas as pd
 import seaborn as sns
 from matplotlib_inline.backend_inline import set_matplotlib_formats
 
 import matplotlib.pyplot as plt
+from matplotlib import patheffects
 
 __all__ = [
     "matplotlib_latex",
     "matplotlib_svg",
-    "matplotlib_seaborn_style",
+    "matplotlib_style",
     "matplotlib_dark_theme",
 ]
 
@@ -41,13 +42,25 @@ def matplotlib_svg() -> None:
     set_matplotlib_formats("svg")
 
 
-def matplotlib_seaborn_style(palette: str = "deep") -> None:
-    plt.style.use("seaborn-whitegrid")
+def matplotlib_style(
+    style: str = "seaborn",
+    palette: str = "deep",
+) -> None:
     plt.rcParams["axes.prop_cycle"] = plt.cycler(color=sns.color_palette(palette))
-    plt.rcParams["grid.linestyle"] = "dotted"
 
     plt.rcParams["axes.spines.right"] = False
     plt.rcParams["axes.spines.top"] = False
+
+    if style == "seaborn":
+        plt.style.use("seaborn-whitegrid")
+        plt.rcParams["grid.linestyle"] = "dotted"
+
+    elif style == "xkcd":
+        plt.xkcd()
+        plt.rcParams["font.family"] = ["xkcd Script", "xkcd"]
+
+    else:
+        raise ValueError(f"unknown matplotlib style '{style}'")
 
 
 class matplotlib_dark_theme:  # pylint: disable=invalid-name
@@ -68,8 +81,8 @@ class matplotlib_dark_theme:  # pylint: disable=invalid-name
         white: str = "#eeeeee",
         black: str = "#111111",
         lightgray: str = "gray",
-    ) -> Dict[str, str]:
-        return {
+    ) -> Dict[str, Union[str, List[Any]]]:
+        dark_theme_params: Dict[str, Union[str, List[Any]]] = {
             "lines.color": white,
             "patch.edgecolor": white,
             "text.color": white,
@@ -85,6 +98,14 @@ class matplotlib_dark_theme:  # pylint: disable=invalid-name
             "savefig.facecolor": black,
             "savefig.edgecolor": black,
         }
+
+        if plt.rcParams["path.sketch"] is not None:
+            dark_theme_params["path.effects"] = [
+                patheffects.withStroke(linewidth=4, foreground=black)
+            ]
+            dark_theme_params["axes.edgecolor"] = white
+
+        return dark_theme_params
 
 
 def smooth_time_series(time_series: pd.Series, step: int = 6) -> pd.Series:
