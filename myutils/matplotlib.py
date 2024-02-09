@@ -59,6 +59,10 @@ def matplotlib_style(
         plt.xkcd()
         plt.rcParams["font.family"] = ["xkcd Script", "xkcd"]
 
+        plt.rcParams["axes.grid"] = True
+        plt.rcParams["grid.linestyle"] = "dotted"
+        plt.rcParams["grid.linewidth"] = 0.5
+
     else:
         raise ValueError(f"unknown matplotlib style '{style}'")
 
